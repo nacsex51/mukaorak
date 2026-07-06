@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Munkaóra számláló</title>
+<script>
+  // Téma beállítása még a rajzolás előtt, hogy ne villanjon
+  (function () {
+    var saved = localStorage.getItem("munkaora-tema");
+    var dark = saved ? saved === "dark"
+      : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (dark) document.documentElement.setAttribute("data-theme", "dark");
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --primary: #0D9488;
+    --primary-hover: #0F766E;
+    --on-primary: #FFFFFF;
+    --secondary: #14B8A6;
+    --accent: #EA580C;
+    --bg: #F0FDFA;
+    --fg: #134E4A;
+    --muted: #E8F1F4;
+    --muted-fg: #5F7A77;
+    --border: #99F6E4;
+    --border-soft: #CCFBF1;
+    --destructive: #DC2626;
+    --destructive-bg: #FEF2F2;
+    --success: #0D9488;
+    --card: #FFFFFF;
+    --ring: #0D9488;
+    --badge-bg: #FFF7ED;
+    --badge-border: #FED7AA;
+    --toast-success-bg: #F0FDFA;
+    --toast-success-fg: #0F766E;
+    --toast-error-bg: #FEF2F2;
+    --toast-error-fg: #B91C1C;
+    --toast-error-border: #FECACA;
+    --toast-info-bg: #FFF7ED;
+    --toast-info-fg: #9A3412;
+    --toast-info-border: #FED7AA;
+    --scrim: rgba(19, 78, 74, 0.5);
+    --placeholder: #9CB5B2;
+  }
+  html[data-theme="dark"] {
+    --primary: #2DD4BF;
+    --primary-hover: #5EEAD4;
+    --on-primary: #0B1514;
+    --secondary: #14B8A6;
+    --accent: #FB923C;
+    --bg: #0E1917;
+    --fg: #E6F1EF;
+    --muted: #1C2D2A;
+    --muted-fg: #8FA8A4;
+    --border: #2A423E;
+    --border-soft: #20342F;
+    --destructive: #F87171;
+    --destructive-bg: #2A1717;
+    --success: #2DD4BF;
+    --card: #152220;
+    --ring: #2DD4BF;
+    --badge-bg: #2A2118;
+    --badge-border: #4A3524;
+    --toast-success-bg: #12211F;
+    --toast-success-fg: #5EEAD4;
+    --toast-error-bg: #2A1717;
+    --toast-error-fg: #FCA5A5;
+    --toast-error-border: #4A2525;
+    --toast-info-bg: #2A2118;
+    --toast-info-fg: #FDBA74;
+    --toast-info-border: #4A3524;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --placeholder: #567571;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100dvh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    line-height: 1.5;
+    transition: background-color 0.2s ease;
+  }
+  .container { width: 100%; max-width: 480px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+
+  h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-fg);
+    margin-bottom: 16px;
+  }
+  .subtitle { color: var(--muted-fg); font-size: 0.92rem; margin: 4px 0 24px; }
+
+  label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; }
+  .helper { font-size: 0.8rem; color: var(--muted-fg); margin: -10px 0 16px; }
+
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    font-size: 1rem;
+    font-family: inherit;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  input::placeholder { color: var(--placeholder); }
+  input:focus { border-color: var(--ring); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+
+  .time-input {
+    font-size: 1.6rem;
+    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  button {
+    border: none;
+    border-radius: 8px;
+    padding: 13px 18px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+  }
+  button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button svg { flex-shrink: 0; }
+
+  .btn-primary { background: var(--primary); color: var(--on-primary); width: 100%; }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+  .btn-danger {
+    background: transparent;
+    color: var(--destructive);
+    border: 1px solid var(--destructive);
+    width: 100%;
+  }
+  .btn-danger:hover:not(:disabled) { background: var(--destructive-bg); }
+  .btn-danger-solid { background: var(--destructive); color: #fff; }
+  .btn-danger-solid:hover:not(:disabled) { background: #B91C1C; }
+  .btn-ghost { background: transparent; color: var(--muted-fg); border: 1px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { background: var(--muted); color: var(--fg); }
+
+  .row { display: flex; gap: 12px; align-items: flex-end; }
+  .row > div { flex: 1; }
+  .row .dash {
+    flex: 0 0 auto;
+    padding-bottom: 30px;
+    color: var(--muted-fg);
+    font-weight: 600;
+  }
+
+  /* Fejléc */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .topbar .user { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+  .topbar .user .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+  }
+  .topbar button { padding: 8px 14px; font-size: 0.85rem; min-height: 38px; }
+
+  /* Összesítő */
+  .total-card { text-align: center; padding: 32px 28px; }
+  .total-card .big {
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+  .total-card .label { color: var(--muted-fg); font-size: 0.88rem; margin: 4px 0 20px; }
+
+  .result-line {
+    background: var(--muted);
+    border-left: 3px solid var(--primary);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 0.92rem;
+    display: none;
+  }
+  .result-line.show { display: block; }
+  .result-line strong { color: var(--primary); }
+
+  /* Bejegyzés lista */
+  .entries { list-style: none; }
+  .entries li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 0.92rem;
+  }
+  .entries li:last-child { border-bottom: none; }
+  .entries .period { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .entries .meta { color: var(--muted-fg); font-size: 0.8rem; margin-top: 2px; }
+  .entries .badge {
+    display: inline-block;
+    background: var(--badge-bg);
+    color: var(--accent);
+    border: 1px solid var(--badge-border);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 999px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .entries .hours {
+    color: var(--primary);
+    font-weight: 700;
+    white-space: nowrap;
+    margin-left: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .empty { color: var(--muted-fg); font-size: 0.9rem; text-align: center; padding: 12px 0 4px; }
+
+  /* Toast */
+  #toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(420px, calc(100vw - 32px));
+  }
+  .toast {
+    padding: 13px 18px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid;
+    animation: slideIn 0.2s ease;
+    background: var(--card);
+  }
+  .toast svg { flex-shrink: 0; }
+  .toast.success { color: var(--toast-success-fg); border-color: var(--border); background: var(--toast-success-bg); }
+  .toast.error { color: var(--toast-error-fg); border-color: var(--toast-error-border); background: var(--toast-error-bg); }
+  .toast.info { color: var(--toast-info-fg); border-color: var(--toast-info-border); background: var(--toast-info-bg); }
+  .toast.hide { animation: fadeOut 0.25s ease forwards; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .toast, .toast.hide { animation: none; }
+    * { transition: none !important; }
+  }
+
+  /* Megerősítő ablak */
+  #modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--scrim);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+  }
+  #modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 26px;
+    max-width: 380px;
+    width: 100%;
+  }
+  .modal h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+  .modal p { margin-bottom: 22px; font-size: 0.92rem; color: var(--muted-fg); }
+  .modal .actions { display: flex; gap: 10px; }
+  .modal .actions button { flex: 1; }
+
+  .hidden { display: none !important; }
+
+  /* Téma kapcsoló */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 50;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    min-height: 44px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted-fg);
+  }
+  .theme-toggle:hover { color: var(--fg); background: var(--muted); }
+  .theme-toggle .icon-sun { display: none; }
+  .theme-toggle .icon-moon { display: block; }
+  html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+  html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+  .login-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--primary);
+    color: var(--on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .mode-note {
+    font-size: 0.78rem;
+    color: var(--muted-fg);
+    text-align: center;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="theme-toggle" aria-label="Sötét és világos mód váltása">
+  <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:auto"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:auto"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</button>
+
+<div class="container">
+
+  <!-- BEJELENTKEZÉS -->
+  <div id="login-view" class="card">
+    <div class="login-logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </div>
+    <h1>Munkaóra számláló</h1>
+    <p class="subtitle">Jelentkezz be a munkaórák rögzítéséhez.</p>
+    <label for="login-user">Felhasználónév</label>
+    <input type="text" id="login-user" autocomplete="username">
+    <label for="login-pass">Jelszó</label>
+    <input type="password" id="login-pass" autocomplete="current-password">
+    <button class="btn-primary" id="login-btn">Bejelentkezés</button>
+    <p class="mode-note" id="mode-note"></p>
+  </div>
+
+  <!-- FŐ NÉZET -->
+  <div id="app-view" class="hidden">
+    <div class="topbar">
+      <div class="user">
+        <div class="avatar" id="avatar"></div>
+        <span id="current-user-label"></span>
+      </div>
+      <button class="btn-ghost" id="logout-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Kijelentkezés
+      </button>
+    </div>
+
+    <div class="card total-card">
+      <div class="big" id="total-hours">0 óra</div>
+      <div class="label">Összes ledolgozott munkaóra</div>
+      <button class="btn-danger" id="reset-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Számláló nullázása
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>Új munkaidő rögzítése</h2>
+      <div class="row">
+        <div>
+          <label for="start-time">Mettől</label>
+          <input class="time-input" type="text" id="start-time" inputmode="decimal" placeholder="8" autocomplete="off">
+        </div>
+        <div class="dash">–</div>
+        <div>
+          <label for="end-time">Meddig</label>
+          <input class="time-input" type="text" id="end-time" inputmode="decimal" placeholder="16" autocomplete="off">
+        </div>
+      </div>
+      <p class="helper">Elég egy számot beírni (0–24 óra), pl. <strong>8</strong> és <strong>2</strong> = reggel 8-tól másnap hajnali 2-ig. Fél órák: <strong>8:30</strong> vagy <strong>8.5</strong></p>
+      <div class="result-line" id="result-line"></div>
+      <button class="btn-primary" id="add-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Hozzáadás
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>Rögzített időszakok</h2>
+      <ul class="entries" id="entries-list"></ul>
+      <div class="empty hidden" id="empty-msg">Még nincs rögzített munkaidő.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast értesítések -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- Megerősítő ablak -->
+<div id="modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3>Számláló nullázása</h3>
+    <p id="modal-text"></p>
+    <div class="actions">
+      <button class="btn-ghost" id="modal-cancel">Mégse</button>
+      <button class="btn-danger-solid" id="modal-confirm">Nullázás</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// FIREBASE BEÁLLÍTÁS
+// A Firebase Console-ban (Projektbeállítások -> Általános ->
+// Saját alkalmazások -> Webalkalmazás) kapott konfigurációt
+// másold ide. Amíg ez nincs kitöltve, az app "helyi módban"
+// fut: a böngésző saját tárolójába ment.
+// ============================================================
+const firebaseConfig = {
+  apiKey: "IDE_MASOLD",
+  authDomain: "IDE_MASOLD",
+  projectId: "IDE_MASOLD",
+  storageBucket: "IDE_MASOLD",
+  messagingSenderId: "IDE_MASOLD",
+  appId: "IDE_MASOLD"
+};
+
+// A Firebase Authentication e-mail címekkel dolgozik, ezért a
+// felhasználónévhez ezt a végződést fűzzük hozzá. A Firebase
+// Console-ban így kell létrehozni a felhasználókat:
+//   pl. anna  ->  anna@munkaora.app  + jelszó
+const EMAIL_DOMAIN = "@munkaora.app";
+
+const FIREBASE_MODE = firebaseConfig.apiKey !== "IDE_MASOLD";
+
+// Helyi mód felhasználói (csak addig él, amíg nincs Firebase beállítva)
+const LOCAL_USERS = {
+  "felhasznalo1": "jelszo1",
+  "felhasznalo2": "jelszo2"
+};
+
+const STORAGE_KEY = "munkaora-adatok";
+
+let auth = null, db = null;
+if (FIREBASE_MODE) {
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+} else {
+  document.getElementById("mode-note").textContent =
+    "Helyi mód: az adatok csak ebben a böngészőben tárolódnak.";
+}
+
+let currentUser = null;   // megjelenített név
+let currentUid = null;    // Firebase uid vagy helyi felhasználónév
+let entriesCache = [];    // a bejelentkezett felhasználó bejegyzései
+
+// ---------- Sötét / világos mód ----------
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  if (dark) {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("munkaora-tema", "light");
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    localStorage.setItem("munkaora-tema", "dark");
+  }
+});
+
+// ---------- Tárolás ----------
+async function loadEntries() {
+  if (FIREBASE_MODE) {
+    const snap = await db.collection("munkaora").doc(currentUid).get();
+    entriesCache = snap.exists ? (snap.data().entries || []) : [];
+  } else {
+    let data = {};
+    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) {}
+    entriesCache = data[currentUid] || [];
+  }
+}
+
+async function saveEntries() {
+  if (FIREBASE_MODE) {
+    await db.collection("munkaora").doc(currentUid).set({ entries: entriesCache });
+  } else {
+    let data = {};
+    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) {}
+    data[currentUid] = entriesCache;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+}
+
+// ---------- Toast ----------
+const TOAST_ICONS = {
+  success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+};
+function toast(message, type) {
+  type = type || "info";
+  const el = document.createElement("div");
+  el.className = "toast " + type;
+  el.innerHTML = TOAST_ICONS[type];
+  el.appendChild(document.createTextNode(message));
+  document.getElementById("toast-container").appendChild(el);
+  setTimeout(() => {
+    el.classList.add("hide");
+    setTimeout(() => el.remove(), 300);
+  }, 3500);
+}
+
+// ---------- Megerősítő ablak ----------
+const overlay = document.getElementById("modal-overlay");
+let confirmCallback = null;
+
+function askConfirm(message, onConfirm) {
+  document.getElementById("modal-text").textContent = message;
+  confirmCallback = onConfirm;
+  overlay.classList.add("show");
+}
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  overlay.classList.remove("show");
+  confirmCallback = null;
+});
+document.getElementById("modal-confirm").addEventListener("click", () => {
+  overlay.classList.remove("show");
+  if (confirmCallback) confirmCallback();
+  confirmCallback = null;
+});
+overlay.addEventListener("click", (e) => {
+  if (e.target === overlay) {
+    overlay.classList.remove("show");
+    confirmCallback = null;
+  }
+});
+
+// ---------- Időértelmezés ----------
+// Elfogad: "8", "22", "8:30", "8.5", "8,5" — mindig 24 órás rendszerben.
+function parseTime(str) {
+  str = String(str).trim().replace(",", ".");
+  if (!str) return null;
+
+  let m = str.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (m) {
+    const h = Number(m[1]), min = Number(m[2]);
+    if (h > 24 || min > 59 || (h === 24 && min > 0)) return null;
+    return h + min / 60;
+  }
+  if (/^\d{1,2}(\.\d+)?$/.test(str)) {
+    const v = parseFloat(str);
+    if (v > 24) return null;
+    return v;
+  }
+  return null;
+}
+
+function timeLabel(v) {
+  const h = Math.floor(v);
+  const min = Math.round((v - h) * 60);
+  return h + ":" + String(min).padStart(2, "0");
+}
+
+function formatHours(h) {
+  const rounded = Math.round(h * 100) / 100;
+  return (Number.isInteger(rounded) ? rounded : rounded.toFixed(2)) + " óra";
+}
+
+function formatDate(d) {
+  return d.getFullYear() + ". " +
+    String(d.getMonth() + 1).padStart(2, "0") + ". " +
+    String(d.getDate()).padStart(2, "0") + ".";
+}
+
+// ---------- Megjelenítés ----------
+function render() {
+  const total = entriesCache.reduce((sum, e) => sum + e.hours, 0);
+  document.getElementById("total-hours").textContent = formatHours(total);
+
+  const list = document.getElementById("entries-list");
+  const empty = document.getElementById("empty-msg");
+  list.innerHTML = "";
+
+  if (entriesCache.length === 0) {
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+
+  // legújabb legfelül
+  [...entriesCache].reverse().forEach((e) => {
+    const li = document.createElement("li");
+    const info = document.createElement("div");
+    const badge = e.overnight ? '<span class="badge">éjfélen át</span>' : "";
+    info.innerHTML =
+      '<div class="period">' + e.start + " – " + e.end + badge + "</div>" +
+      '<div class="meta">' + e.date + "</div>";
+    const hours = document.createElement("div");
+    hours.className = "hours";
+    hours.textContent = formatHours(e.hours);
+    li.appendChild(info);
+    li.appendChild(hours);
+    list.appendChild(li);
+  });
+}
+
+// ---------- Nézetváltás ----------
+function showApp() {
+  document.getElementById("login-view").classList.add("hidden");
+  document.getElementById("app-view").classList.remove("hidden");
+  document.getElementById("current-user-label").textContent = currentUser;
+  document.getElementById("avatar").textContent = currentUser.slice(0, 1);
+  render();
+}
+
+function showLogin() {
+  currentUser = null;
+  currentUid = null;
+  entriesCache = [];
+  document.getElementById("app-view").classList.add("hidden");
+  document.getElementById("login-view").classList.remove("hidden");
+}
+
+// ---------- Bejelentkezés ----------
+const loginBtn = document.getElementById("login-btn");
+
+async function doLogin() {
+  const user = document.getElementById("login-user").value.trim().toLowerCase();
+  const pass = document.getElementById("login-pass").value;
+
+  if (!user || !pass) {
+    toast("Add meg a felhasználónevet és a jelszót!", "error");
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Bejelentkezés...";
+
+  try {
+    if (FIREBASE_MODE) {
+      await auth.signInWithEmailAndPassword(user + EMAIL_DOMAIN, pass);
+      // a betöltést és a nézetváltást az onAuthStateChanged intézi
+      toast("Sikeres bejelentkezés. Szia, " + user + "!", "success");
+    } else {
+      if (!(user in LOCAL_USERS) || LOCAL_USERS[user] !== pass) {
+        toast("Hibás felhasználónév vagy jelszó!", "error");
+        return;
+      }
+      currentUser = user;
+      currentUid = user;
+      sessionStorage.setItem("munkaora-user", user);
+      await loadEntries();
+      toast("Sikeres bejelentkezés. Szia, " + user + "!", "success");
+      showApp();
+    }
+    document.getElementById("login-pass").value = "";
+    document.getElementById("login-user").value = "";
+  } catch (err) {
+    if (err && (err.code === "auth/invalid-credential" ||
+                err.code === "auth/wrong-password" ||
+                err.code === "auth/user-not-found")) {
+      toast("Hibás felhasználónév vagy jelszó!", "error");
+    } else if (err && err.code === "auth/too-many-requests") {
+      toast("Túl sok próbálkozás. Várj egy kicsit, majd próbáld újra.", "error");
+    } else if (err && err.code === "auth/network-request-failed") {
+      toast("Nincs internetkapcsolat. Próbáld újra.", "error");
+    } else {
+      toast("Nem sikerült bejelentkezni. Próbáld újra.", "error");
+    }
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Bejelentkezés";
+  }
+}
+
+loginBtn.addEventListener("click", doLogin);
+document.getElementById("login-pass").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") doLogin();
+});
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+  if (FIREBASE_MODE) {
+    auth.signOut(); // a nézetváltást az onAuthStateChanged intézi
+  } else {
+    sessionStorage.removeItem("munkaora-user");
+    showLogin();
+  }
+  toast("Kijelentkeztél.", "info");
+});
+
+// Bejelentkezett állapot helyreállítása
+if (FIREBASE_MODE) {
+  auth.onAuthStateChanged(async (u) => {
+    if (u) {
+      currentUid = u.uid;
+      currentUser = (u.email || "").split("@")[0];
+      try {
+        await loadEntries();
+      } catch (e) {
+        toast("Nem sikerült betölteni az adatokat. Frissítsd az oldalt!", "error");
+        entriesCache = [];
+      }
+      showApp();
+    } else {
+      showLogin();
+    }
+  });
+} else {
+  const savedUser = sessionStorage.getItem("munkaora-user");
+  if (savedUser && savedUser in LOCAL_USERS) {
+    currentUser = savedUser;
+    currentUid = savedUser;
+    loadEntries().then(showApp);
+  }
+}
+
+// ---------- Munkaidő hozzáadása ----------
+const addBtn = document.getElementById("add-btn");
+
+addBtn.addEventListener("click", async () => {
+  const startRaw = document.getElementById("start-time").value;
+  const endRaw = document.getElementById("end-time").value;
+
+  if (!startRaw.trim() || !endRaw.trim()) {
+    toast("Add meg, hogy mettől meddig dolgoztál!", "error");
+    return;
+  }
+
+  const start = parseTime(startRaw);
+  const end = parseTime(endRaw);
+
+  if (start === null || end === null) {
+    toast("Érvénytelen időpont. Írj be egy számot 0 és 24 között, pl. 8 vagy 16:30.", "error");
+    return;
+  }
+  if (start === end) {
+    toast("A kezdés és a befejezés nem lehet ugyanaz.", "error");
+    return;
+  }
+
+  // Éjfélen átnyúló műszak automatikus felismerése:
+  // ha a befejezés nem nagyobb a kezdésnél, az másnapra esik.
+  const overnight = end <= start;
+  let hoursWorked = end - start;
+  if (overnight) hoursWorked += 24;
+
+  // A műszak napja: ma — de ha éjfélen átnyúlt, akkor az előző nap,
+  // mert a munka még előző nap kezdődött.
+  const day = new Date();
+  if (overnight) day.setDate(day.getDate() - 1);
+
+  const entry = {
+    date: formatDate(day),
+    start: timeLabel(start),
+    end: timeLabel(end),
+    hours: hoursWorked,
+    overnight: overnight
+  };
+
+  addBtn.disabled = true;
+  entriesCache.push(entry);
+  try {
+    await saveEntries();
+  } catch (e) {
+    entriesCache.pop();
+    toast("Nem sikerült menteni. Ellenőrizd az internetkapcsolatot!", "error");
+    addBtn.disabled = false;
+    return;
+  }
+  addBtn.disabled = false;
+
+  const line = document.getElementById("result-line");
+  line.innerHTML = timeLabel(start) + "-tól " + timeLabel(end) + "-ig ez <strong>" +
+    formatHours(hoursWorked) + "</strong>" +
+    (overnight ? " (éjfélen átnyúló műszak, dátum: " + formatDate(day) + ")" : "") + ".";
+  line.classList.add("show");
+
+  document.getElementById("start-time").value = "";
+  document.getElementById("end-time").value = "";
+  document.getElementById("start-time").focus();
+
+  toast("Munkaidő rögzítve: " + formatHours(hoursWorked), "success");
+  render();
+});
+
+document.getElementById("end-time").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") addBtn.click();
+});
+
+// ---------- Nullázás ----------
+document.getElementById("reset-btn").addEventListener("click", () => {
+  askConfirm(
+    "Az összes eddig rögzített munkaidőd törlődik, és a számolás elölről kezdődik. Biztosan folytatod?",
+    async () => {
+      const backup = entriesCache;
+      entriesCache = [];
+      try {
+        await saveEntries();
+      } catch (e) {
+        entriesCache = backup;
+        toast("Nem sikerült nullázni. Ellenőrizd az internetkapcsolatot!", "error");
+        return;
+      }
+      document.getElementById("result-line").classList.remove("show");
+      toast("A számláló nullázva. Kezdheted elölről a számolást.", "success");
+      render();
+    }
+  );
+});
+</script>
+</body>
+</html>
