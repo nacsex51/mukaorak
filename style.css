@@ -145,6 +145,22 @@ input {
 input::placeholder { color: var(--placeholder); }
 input:focus { border-color: var(--ring); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
 
+/* iOS Safari: a natív dátummező a saját belső szélességével rajzolódik és kilóg
+   az ablakból. Az @supports blokk CSAK iOS-en fut (a -webkit-touch-callout
+   iOS-specifikus), így ott appearance:none-nal a width:100% érvényre jut, a mező
+   beleigazodik az ablakba; asztali böngészőben marad a natív dátumválasztó. */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    text-align: center;
+  }
+  input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0; }
+}
+
 /* nagy, középre igazított időbeviteli mező */
 .time-input {
   font-size: 1.6rem;

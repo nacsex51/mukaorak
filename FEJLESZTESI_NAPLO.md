@@ -43,6 +43,16 @@ miért működik. Új munka után mindig egy új bejegyzést adunk hozzá felül
 
 ## Változásnapló (legújabb felül)
 
+### 2026-07-06 — iOS dátummező kilógás valódi javítása (appearance:none)
+- A modal szélessége már szimmetrikus volt, de iOS Safari a natív `input[type="date"]`
+  mezőt a SAJÁT belső szélességével rajzolja és figyelmen kívül hagyja a `width:100%`-ot,
+  ezért a dátummező továbbra is kilógott az ablakból (Chrome-ban nem reprodukálható).
+- Megoldás: `@supports (-webkit-touch-callout: none)` blokk (CSAK iOS Safari) →
+  `input[type="date"] { -webkit-appearance: none; width: 100%; min-width: 0; }`.
+  Így a szélesség érvényre jut, a mező beleigazodik az ablak sarkába. Asztali
+  böngészőben a blokk nem fut, marad a natív dátumválasztó (ellenőrizve: appearance:auto).
+- Service worker cache: `v4`.
+
 ### 2026-07-06 — Modal szimmetrikus középre igazítás (iOS dátummező)
 - Az előző `min-width: 0` nem volt elég: iOS-en a rendszer dátummező belső minimális
   szélessége továbbra is szétfeszítette és elcsúsztatta az ablakot (aszimmetrikus

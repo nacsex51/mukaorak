@@ -1,7 +1,7 @@
 // Service worker — az app váza (HTML/CSS/JS/ikonok) gyorsítótárból tölt,
 // így a betöltés gyors; a háttérben frissül a legújabb verzióra.
 // A Firebase-kéréseket (más domain) egyáltalán nem érinti.
-const CACHE = "munkaora-v3";
+const CACHE = "munkaora-v4";
 const ASSETS = [
   "./",
   "./index.html",
