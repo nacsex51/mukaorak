@@ -43,6 +43,19 @@ miért működik. Új munka után mindig egy új bejegyzést adunk hozzá felül
 
 ## Változásnapló (legújabb felül)
 
+### 2026-07-06 — Modal kilógás (iOS) + betöltési sebesség
+- **Hibajavítás (iOS):** a felugró ablak kilógott a képernyőből, mert flex-elemként
+  a `min-width: auto` alapérték miatt az iOS-es dátummező belső minimális szélessége
+  szélesebbre feszítette a képernyőnél (Chrome-ban nem jött elő). Megoldás:
+  `.modal { min-width: 0 }` + `.modal input { max-width: 100% }`.
+- **Sebesség 1:** a három Firebase SDK szkript `defer`-t kapott (az `app.js`-szel
+  együtt, hogy a sorrend megmaradjon). Így a több száz KB-os SDK nem blokkolja a
+  megjelenítést — a váz azonnal kirajzolódik, a Firebase a háttérben töltődik.
+- **Sebesség 2:** a service worker „hálózat-először" helyett „stale-while-revalidate"
+  (gyorsítótár-először, háttérfrissítés) lett, és a Firebase-kéréseket már nem fogja
+  el. Az app-váz így ismételt megnyitáskor azonnal betölt. Cache verzió: `v2`,
+  bővítve a `style.css` és `app.js` fájlokkal.
+
 ### 2026-07-06 — Nap törlése + visszamenőleges ablak elrendezés-javítás
 - **Új funkció:** a „Rögzített időszakok" listában minden sor mellett egy törlés
   (kuka) gomb, amivel egy nap törölhető. Törlés előtt megerősítő ablak jelenik meg.

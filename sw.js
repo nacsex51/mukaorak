@@ -1,6 +1,16 @@
-// Service worker: halozat-elsobbseggel tolt, offline eseten a cache-bol szolgal ki.
-const CACHE = "munkaora-v1";
-const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+// Service worker — az app váza (HTML/CSS/JS/ikonok) gyorsítótárból tölt,
+// így a betöltés gyors; a háttérben frissül a legújabb verzióra.
+// A Firebase-kéréseket (más domain) egyáltalán nem érinti.
+const CACHE = "munkaora-v2";
+const ASSETS = [
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
+];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
@@ -16,16 +26,26 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
+  const req = e.request;
+  if (req.method !== "GET") return;
+
+  // Csak a saját fájljainkat kezeljük; a Firebase (más domain) menjen közvetlenül.
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Stale-while-revalidate: azonnal a gyorsítótárból, közben frissít a háttérben.
   e.respondWith(
-    fetch(e.request)
-      .then((resp) => {
-        if (resp.ok && e.request.url.startsWith(self.location.origin)) {
-          const copy = resp.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, copy));
-        }
-        return resp;
-      })
-      .catch(() => caches.match(e.request))
+    caches.match(req).then((cached) => {
+      const network = fetch(req)
+        .then((resp) => {
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
+          return resp;
+        })
+        .catch(() => cached);
+      return cached || network;
+    })
   );
 });

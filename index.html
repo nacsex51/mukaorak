@@ -32,10 +32,10 @@
 <!-- Saját stílusok -->
 <link rel="stylesheet" href="style.css">
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Firebase SDK (defer: nem blokkolja a megjelenítést, a betöltés után fut) -->
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -183,7 +183,7 @@
   </div>
 </div>
 
-<!-- Alkalmazáslogika -->
-<script src="app.js"></script>
+<!-- Alkalmazáslogika (defer: a Firebase SDK után, sorrendben fut le) -->
+<script defer src="app.js"></script>
 </body>
 </html>
