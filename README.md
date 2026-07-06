@@ -1,40 +1,43 @@
 # Munkaóra számláló
 
-Egyszerű webalkalmazás ledolgozott munkaórák rögzítésére, két felhasználóval.
-Egyetlen HTML fájlból áll (`index.html`), az adatokat Firebase-ben (Firestore) tárolja,
-így több gépről is használható.
+Egyszerű webalkalmazás ledolgozott munkaórák rögzítésére. Egyetlen HTML fájlból áll
+(`index.html`), az adatokat Firebase-ben (Firestore) tárolja, a bejelentkezést a
+Firebase Authentication kezeli — így több gépről is használható, és mindenki csak
+a saját munkaóráit látja.
 
 ## Használat
 
-- Írd be, mettől meddig dolgoztál (24 órás rendszerben, pl. `8` és `16`).
+- **Regisztráció:** az app Regisztráció fülén bárki létrehozhat magának fiókot
+  (felhasználónév + jelszó). Mindenki csak a saját adatait éri el.
+- **Munkaidő rögzítése:** írd be, mettől meddig dolgoztál (24 órás rendszerben, pl. `8` és `16`).
 - Fél órák: `8:30` vagy `8.5`.
-- Éjfélen átnyúló műszakot automatikusan felismeri: `8` → `2` = reggel 8-tól másnap hajnali 2-ig (18 óra), és az előző napi dátummal rögzíti.
+- Éjfélen átnyúló műszakot automatikusan felismeri: `8` → `2` = reggel 8-tól másnap
+  hajnali 2-ig (18 óra), és az előző napi dátummal rögzíti.
 - A „Számláló nullázása" gombbal törölhető az összes bejegyzés, és elölről kezdődik a számolás.
 - Jobb felül sötét/világos mód kapcsoló.
 
-## Firebase beállítás (egyszeri, kb. 10 perc)
+## Biztonság
 
-Amíg ez nincs kész, az app „helyi módban" fut: működik, de az adatok csak az adott böngészőben tárolódnak.
+- **A `firebaseConfig` (benne az `apiKey`) szándékosan publikus.** A Firebase webes
+  alkalmazásoknál ez nem titkos kulcs, hanem a projekt azonosítója — a Google
+  dokumentációja szerint nyugodtan szerepelhet nyilvános kódban. A GitHub
+  figyelmeztetése ezért ennél a kulcstípusnál hamis riasztás.
+- A tényleges védelmet két dolog adja:
+  1. **Firebase Authentication** — csak bejelentkezett felhasználó érheti el az adatbázist.
+  2. **Firestore szabályok** — mindenki kizárólag a saját (`uid`-hoz kötött) adatait
+     olvashatja és írhatja, más adataihoz akkor sem fér hozzá, ha akarna.
+- Extra védelemként az API-kulcs korlátozható a saját domainre:
+  [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+  → válaszd ki a `munkaorak-40089` projektet → kattints a **Browser key (auto created by Firebase)**
+  kulcsra → **Application restrictions: Websites** → add hozzá:
+  `https://nacsex51.github.io/*` → **Save**. Ezután a kulcs kizárólag a saját
+  weboldaladról használható. (Figyelem: utána a gépről közvetlenül megnyitott
+  `index.html` nem fog működni, csak a github.io-s cím.)
 
-### 1. Projekt létrehozása
+## Firestore szabályok
 
-1. Menj a [Firebase Console](https://console.firebase.google.com/)-ra, és hozz létre egy új projektet.
-2. A projekten belül: **Projektbeállítások** (fogaskerék) → **Általános** → görgess le a **Saját alkalmazások** részhez → kattints a **`</>` (Web)** ikonra → adj neki nevet → **Regisztrálás**.
-3. A megjelenő `firebaseConfig` értékeit másold be az `index.html` fájlba, a `firebaseConfig` részhez (a fájl vége felé, `IDE_MASOLD` feliratú helyekre).
-
-### 2. Bejelentkezés (Authentication)
-
-1. Bal oldali menü: **Authentication** → **Get started**.
-2. **Sign-in method** fül → engedélyezd az **Email/Password** módot.
-3. **Users** fül → **Add user** gombbal hozd létre a két felhasználót.
-   A felhasználónévhez fűzd hozzá a `@munkaora.app` végződést, például:
-   - `anna@munkaora.app` + jelszó → az appba `anna` néven lehet belépni
-   - `peter@munkaora.app` + jelszó → az appba `peter` néven lehet belépni
-
-### 3. Adatbázis (Firestore)
-
-1. Bal oldali menü: **Firestore Database** → **Create database** → válaszd a **production mode**-ot.
-2. A **Rules** fülön cseréld le a szabályokat erre, majd **Publish**:
+A Firebase Console-ban a **Firestore Database → Rules** fülön ennek kell szerepelnie
+(Publish után él):
 
 ```
 rules_version = '2';
@@ -47,10 +50,16 @@ service cloud.firestore {
 }
 ```
 
-Ez biztosítja, hogy mindenki csak a saját munkaóráit lássa és módosíthassa.
+## Felhasználók kezelése
+
+- Új felhasználó az app **Regisztráció** fülén hozható létre (a háttérben
+  `felhasznalonev@munkaora.app` formában jön létre a Firebase-ben — ez nem igazi
+  e-mail cím, csak azonosító).
+- Felhasználó törlése / jelszó visszaállítása: Firebase Console →
+  **Authentication → Users** fül → a sor végén a ⋮ menü.
 
 ## Közzététel GitHub Pages-szel
 
 1. A repo oldalán: **Settings** → **Pages**.
 2. **Source**: Deploy from a branch, **Branch**: `main`, mappa: `/ (root)` → **Save**.
-3. Pár perc múlva az app elérhető lesz a `https://<felhasznalonev>.github.io/<repo-nev>/` címen.
+3. Pár perc múlva az app elérhető: `https://nacsex51.github.io/mukaorak/`

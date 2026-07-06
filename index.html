@@ -359,11 +359,27 @@
     margin-bottom: 16px;
   }
 
-  .mode-note {
-    font-size: 0.78rem;
+  /* Bejelentkezés / regisztráció fülek */
+  .auth-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--muted);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .auth-tabs button {
+    flex: 1;
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    background: transparent;
     color: var(--muted-fg);
-    text-align: center;
-    margin-top: 4px;
+    border-radius: 7px;
+  }
+  .auth-tabs button.active {
+    background: var(--card);
+    color: var(--fg);
   }
 </style>
 </head>
@@ -382,13 +398,31 @@
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     </div>
     <h1>Munkaóra számláló</h1>
-    <p class="subtitle">Jelentkezz be a munkaórák rögzítéséhez.</p>
-    <label for="login-user">Felhasználónév</label>
-    <input type="text" id="login-user" autocomplete="username">
-    <label for="login-pass">Jelszó</label>
-    <input type="password" id="login-pass" autocomplete="current-password">
-    <button class="btn-primary" id="login-btn">Bejelentkezés</button>
-    <p class="mode-note" id="mode-note"></p>
+    <p class="subtitle">Jelentkezz be vagy regisztrálj a munkaórák rögzítéséhez.</p>
+
+    <div class="auth-tabs">
+      <button id="tab-login" class="active">Bejelentkezés</button>
+      <button id="tab-register">Regisztráció</button>
+    </div>
+
+    <div id="login-form">
+      <label for="login-user">Felhasználónév</label>
+      <input type="text" id="login-user" autocomplete="username">
+      <label for="login-pass">Jelszó</label>
+      <input type="password" id="login-pass" autocomplete="current-password">
+      <button class="btn-primary" id="login-btn">Bejelentkezés</button>
+    </div>
+
+    <div id="register-form" class="hidden">
+      <label for="reg-user">Felhasználónév</label>
+      <input type="text" id="reg-user" autocomplete="off">
+      <p class="helper" style="margin-top:-10px">3–20 karakter, csak ékezet nélküli kisbetű és szám.</p>
+      <label for="reg-pass">Jelszó</label>
+      <input type="password" id="reg-pass" autocomplete="new-password">
+      <label for="reg-pass2">Jelszó újra</label>
+      <input type="password" id="reg-pass2" autocomplete="new-password">
+      <button class="btn-primary" id="register-btn">Regisztráció</button>
+    </div>
   </div>
 
   <!-- FŐ NÉZET -->
@@ -461,10 +495,10 @@
 <script>
 // ============================================================
 // FIREBASE BEÁLLÍTÁS
-// A Firebase Console-ban (Projektbeállítások -> Általános ->
-// Saját alkalmazások -> Webalkalmazás) kapott konfigurációt
-// másold ide. Amíg ez nincs kitöltve, az app "helyi módban"
-// fut: a böngésző saját tárolójába ment.
+// Ez a konfiguráció szándékosan publikus: a Firebase webes
+// alkalmazásoknál ez csak a projekt azonosítására szolgál,
+// nem titkos kulcs. A biztonságot a Firestore szabályok és a
+// Firebase Authentication adja.
 // ============================================================
 const firebaseConfig = {
   apiKey: "AIzaSyDUeUmHji8AcHs7iO2Jxk_eApindOa2IAQ",
@@ -481,25 +515,9 @@ const firebaseConfig = {
 //   pl. anna  ->  anna@munkaora.app  + jelszó
 const EMAIL_DOMAIN = "@munkaora.app";
 
-const FIREBASE_MODE = firebaseConfig.apiKey !== "IDE_MASOLD";
-
-// Helyi mód felhasználói (csak addig él, amíg nincs Firebase beállítva)
-const LOCAL_USERS = {
-  "felhasznalo1": "jelszo1",
-  "felhasznalo2": "jelszo2"
-};
-
-const STORAGE_KEY = "munkaora-adatok";
-
-let auth = null, db = null;
-if (FIREBASE_MODE) {
-  firebase.initializeApp(firebaseConfig);
-  auth = firebase.auth();
-  db = firebase.firestore();
-} else {
-  document.getElementById("mode-note").textContent =
-    "Helyi mód: az adatok csak ebben a böngészőben tárolódnak.";
-}
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 let currentUser = null;   // megjelenített név
 let currentUid = null;    // Firebase uid vagy helyi felhasználónév
@@ -519,25 +537,12 @@ document.getElementById("theme-toggle").addEventListener("click", () => {
 
 // ---------- Tárolás ----------
 async function loadEntries() {
-  if (FIREBASE_MODE) {
-    const snap = await db.collection("munkaora").doc(currentUid).get();
-    entriesCache = snap.exists ? (snap.data().entries || []) : [];
-  } else {
-    let data = {};
-    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) {}
-    entriesCache = data[currentUid] || [];
-  }
+  const snap = await db.collection("munkaora").doc(currentUid).get();
+  entriesCache = snap.exists ? (snap.data().entries || []) : [];
 }
 
 async function saveEntries() {
-  if (FIREBASE_MODE) {
-    await db.collection("munkaora").doc(currentUid).set({ entries: entriesCache });
-  } else {
-    let data = {};
-    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) {}
-    data[currentUid] = entriesCache;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
+  await db.collection("munkaora").doc(currentUid).set({ entries: entriesCache });
 }
 
 // ---------- Toast ----------
@@ -686,22 +691,9 @@ async function doLogin() {
   loginBtn.textContent = "Bejelentkezés...";
 
   try {
-    if (FIREBASE_MODE) {
-      await auth.signInWithEmailAndPassword(user + EMAIL_DOMAIN, pass);
-      // a betöltést és a nézetváltást az onAuthStateChanged intézi
-      toast("Sikeres bejelentkezés. Szia, " + user + "!", "success");
-    } else {
-      if (!(user in LOCAL_USERS) || LOCAL_USERS[user] !== pass) {
-        toast("Hibás felhasználónév vagy jelszó!", "error");
-        return;
-      }
-      currentUser = user;
-      currentUid = user;
-      sessionStorage.setItem("munkaora-user", user);
-      await loadEntries();
-      toast("Sikeres bejelentkezés. Szia, " + user + "!", "success");
-      showApp();
-    }
+    await auth.signInWithEmailAndPassword(user + EMAIL_DOMAIN, pass);
+    // a betöltést és a nézetváltást az onAuthStateChanged intézi
+    toast("Sikeres bejelentkezés. Szia, " + user + "!", "success");
     document.getElementById("login-pass").value = "";
     document.getElementById("login-user").value = "";
   } catch (err) {
@@ -728,40 +720,89 @@ document.getElementById("login-pass").addEventListener("keydown", (e) => {
 });
 
 document.getElementById("logout-btn").addEventListener("click", () => {
-  if (FIREBASE_MODE) {
-    auth.signOut(); // a nézetváltást az onAuthStateChanged intézi
-  } else {
-    sessionStorage.removeItem("munkaora-user");
-    showLogin();
-  }
+  auth.signOut(); // a nézetváltást az onAuthStateChanged intézi
   toast("Kijelentkeztél.", "info");
 });
 
-// Bejelentkezett állapot helyreállítása
-if (FIREBASE_MODE) {
-  auth.onAuthStateChanged(async (u) => {
-    if (u) {
-      currentUid = u.uid;
-      currentUser = (u.email || "").split("@")[0];
-      try {
-        await loadEntries();
-      } catch (e) {
-        toast("Nem sikerült betölteni az adatokat. Frissítsd az oldalt!", "error");
-        entriesCache = [];
-      }
-      showApp();
-    } else {
-      showLogin();
+// Bejelentkezett állapot helyreállítása (oldalfrissítés után is)
+auth.onAuthStateChanged(async (u) => {
+  if (u) {
+    currentUid = u.uid;
+    currentUser = (u.email || "").split("@")[0];
+    try {
+      await loadEntries();
+    } catch (e) {
+      toast("Nem sikerült betölteni az adatokat. Frissítsd az oldalt!", "error");
+      entriesCache = [];
     }
-  });
-} else {
-  const savedUser = sessionStorage.getItem("munkaora-user");
-  if (savedUser && savedUser in LOCAL_USERS) {
-    currentUser = savedUser;
-    currentUid = savedUser;
-    loadEntries().then(showApp);
+    showApp();
+  } else {
+    showLogin();
+  }
+});
+
+// ---------- Regisztráció ----------
+const registerBtn = document.getElementById("register-btn");
+const tabLogin = document.getElementById("tab-login");
+const tabRegister = document.getElementById("tab-register");
+
+function setAuthTab(showRegister) {
+  document.getElementById("login-form").classList.toggle("hidden", showRegister);
+  document.getElementById("register-form").classList.toggle("hidden", !showRegister);
+  tabLogin.classList.toggle("active", !showRegister);
+  tabRegister.classList.toggle("active", showRegister);
+}
+tabLogin.addEventListener("click", () => setAuthTab(false));
+tabRegister.addEventListener("click", () => setAuthTab(true));
+
+async function doRegister() {
+  const user = document.getElementById("reg-user").value.trim().toLowerCase();
+  const pass = document.getElementById("reg-pass").value;
+  const pass2 = document.getElementById("reg-pass2").value;
+
+  if (!/^[a-z0-9]{3,20}$/.test(user)) {
+    toast("A felhasználónév 3–20 karakter legyen, csak ékezet nélküli kisbetű és szám.", "error");
+    return;
+  }
+  if (pass.length < 6) {
+    toast("A jelszó legalább 6 karakter legyen.", "error");
+    return;
+  }
+  if (pass !== pass2) {
+    toast("A két jelszó nem egyezik.", "error");
+    return;
+  }
+
+  registerBtn.disabled = true;
+  registerBtn.textContent = "Regisztráció...";
+  try {
+    await auth.createUserWithEmailAndPassword(user + EMAIL_DOMAIN, pass);
+    // a Firebase automatikusan be is jelentkeztet,
+    // a nézetváltást az onAuthStateChanged intézi
+    toast("Sikeres regisztráció. Szia, " + user + "!", "success");
+    document.getElementById("reg-user").value = "";
+    document.getElementById("reg-pass").value = "";
+    document.getElementById("reg-pass2").value = "";
+    setAuthTab(false);
+  } catch (err) {
+    if (err && err.code === "auth/email-already-in-use") {
+      toast("Ez a felhasználónév már foglalt.", "error");
+    } else if (err && err.code === "auth/weak-password") {
+      toast("A jelszó túl gyenge. Legalább 6 karakter legyen.", "error");
+    } else if (err && err.code === "auth/network-request-failed") {
+      toast("Nincs internetkapcsolat. Próbáld újra.", "error");
+    } else {
+      toast("Nem sikerült a regisztráció. Próbáld újra.", "error");
+    }
+  } finally {
+    registerBtn.disabled = false;
+    registerBtn.textContent = "Regisztráció";
   }
 }
+registerBtn.addEventListener("click", doRegister);
+document.getElementById("reg-pass2").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") doRegister();
+});
 
 // ---------- Munkaidő hozzáadása ----------
 const addBtn = document.getElementById("add-btn");
