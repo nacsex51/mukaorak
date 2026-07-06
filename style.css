@@ -1,0 +1,452 @@
+/* ============================================================
+   MUNKAÓRA SZÁMLÁLÓ — stílusok
+   Tartalom:
+     1. Színek és témák (CSS változók)
+     2. Alapok (body, kártyák, címek, űrlapelemek, gombok)
+     3. Bejelentkezés / regisztráció
+     4. Fejléc (topbar)
+     5. Összesítő kártya
+     6. Bejegyzés lista
+     7. Toast értesítések
+     8. Felugró ablakok (nullázás + visszamenőleges rögzítés)
+     9. Téma kapcsoló és lebegő gomb (FAB)
+    10. Mobil nézet (álló telefon)
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   1. SZÍNEK ÉS TÉMÁK
+   ---------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --primary: #0D9488;
+  --primary-hover: #0F766E;
+  --on-primary: #FFFFFF;
+  --secondary: #14B8A6;
+  --accent: #EA580C;
+  --accent-hover: #C2410C;
+  --bg: #F0FDFA;
+  --fg: #134E4A;
+  --muted: #E8F1F4;
+  --muted-fg: #5F7A77;
+  --border: #99F6E4;
+  --border-soft: #CCFBF1;
+  --destructive: #DC2626;
+  --destructive-bg: #FEF2F2;
+  --card: #FFFFFF;
+  --ring: #0D9488;
+  --badge-bg: #FFF7ED;
+  --badge-border: #FED7AA;
+  --toast-success-bg: #F0FDFA;
+  --toast-success-fg: #0F766E;
+  --toast-error-bg: #FEF2F2;
+  --toast-error-fg: #B91C1C;
+  --toast-error-border: #FECACA;
+  --toast-info-bg: #FFF7ED;
+  --toast-info-fg: #9A3412;
+  --toast-info-border: #FED7AA;
+  --scrim: rgba(19, 78, 74, 0.5);
+  --placeholder: #9CB5B2;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --primary: #2DD4BF;
+  --primary-hover: #5EEAD4;
+  --on-primary: #0B1514;
+  --secondary: #14B8A6;
+  --accent: #FB923C;
+  --accent-hover: #F97316;
+  --bg: #0E1917;
+  --fg: #E6F1EF;
+  --muted: #1C2D2A;
+  --muted-fg: #8FA8A4;
+  --border: #2A423E;
+  --border-soft: #20342F;
+  --destructive: #F87171;
+  --destructive-bg: #2A1717;
+  --card: #152220;
+  --ring: #2DD4BF;
+  --badge-bg: #2A2118;
+  --badge-border: #4A3524;
+  --toast-success-bg: #12211F;
+  --toast-success-fg: #5EEAD4;
+  --toast-error-bg: #2A1717;
+  --toast-error-fg: #FCA5A5;
+  --toast-error-border: #4A2525;
+  --toast-info-bg: #2A2118;
+  --toast-info-fg: #FDBA74;
+  --toast-info-border: #4A3524;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --placeholder: #567571;
+}
+
+/* ----------------------------------------------------------
+   2. ALAPOK
+   ---------------------------------------------------------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* alul extra hely, hogy a lebegő gomb ne takarja a tartalmat */
+  padding: 40px 16px calc(96px + env(safe-area-inset-bottom));
+  line-height: 1.5;
+  transition: background-color 0.2s ease;
+}
+
+.container { width: 100%; max-width: 480px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 28px;
+  margin-bottom: 16px;
+}
+
+h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+
+h2 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-fg);
+  margin-bottom: 16px;
+}
+
+.subtitle { color: var(--muted-fg); font-size: 0.92rem; margin: 4px 0 24px; }
+
+label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; }
+
+.helper { font-size: 0.8rem; color: var(--muted-fg); margin: -10px 0 16px; }
+.helper.tight { margin-top: -10px; }
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg);
+  font-size: 1rem;
+  font-family: inherit;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+input::placeholder { color: var(--placeholder); }
+input:focus { border-color: var(--ring); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+
+/* nagy, középre igazított időbeviteli mező */
+.time-input {
+  font-size: 1.6rem;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 13px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px; /* érintésbarát méret */
+}
+button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button svg { flex-shrink: 0; }
+
+.btn-primary { background: var(--primary); color: var(--on-primary); width: 100%; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--destructive);
+  border: 1px solid var(--destructive);
+  width: 100%;
+}
+.btn-danger:hover:not(:disabled) { background: var(--destructive-bg); }
+
+.btn-danger-solid { background: var(--destructive); color: #fff; }
+.btn-danger-solid:hover:not(:disabled) { background: #B91C1C; }
+
+.btn-ghost { background: transparent; color: var(--muted-fg); border: 1px solid var(--border); }
+.btn-ghost:hover:not(:disabled) { background: var(--muted); color: var(--fg); }
+
+.row { display: flex; gap: 12px; align-items: flex-end; }
+.row > div { flex: 1; }
+.row .dash {
+  flex: 0 0 auto;
+  padding-bottom: 30px;
+  color: var(--muted-fg);
+  font-weight: 600;
+}
+
+.hidden { display: none !important; }
+
+/* ----------------------------------------------------------
+   3. BEJELENTKEZÉS / REGISZTRÁCIÓ
+   ---------------------------------------------------------- */
+.login-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: var(--muted);
+  padding: 4px;
+  border-radius: 10px;
+}
+.auth-tabs button {
+  flex: 1;
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--muted-fg);
+  border-radius: 7px;
+}
+.auth-tabs button.active {
+  background: var(--card);
+  color: var(--fg);
+}
+
+/* ----------------------------------------------------------
+   4. FEJLÉC (topbar)
+   ---------------------------------------------------------- */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.topbar .user { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+.topbar .user .avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+.topbar button { padding: 8px 14px; font-size: 0.85rem; min-height: 38px; }
+
+/* ----------------------------------------------------------
+   5. ÖSSZESÍTŐ KÁRTYA
+   ---------------------------------------------------------- */
+.total-card { text-align: center; padding: 32px 28px; }
+.total-card .big {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.total-card .label { color: var(--muted-fg); font-size: 0.88rem; margin: 4px 0 20px; }
+
+/* az utolsó számítás eredménysora */
+.result-line {
+  background: var(--muted);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 0.92rem;
+  display: none;
+}
+.result-line.show { display: block; }
+.result-line strong { color: var(--primary); }
+
+/* ----------------------------------------------------------
+   6. BEJEGYZÉS LISTA
+   ---------------------------------------------------------- */
+.entries { list-style: none; }
+.entries li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 0.92rem;
+}
+.entries li:last-child { border-bottom: none; }
+.entries .period { font-weight: 600; font-variant-numeric: tabular-nums; }
+.entries .meta { color: var(--muted-fg); font-size: 0.8rem; margin-top: 2px; }
+.entries .badge {
+  display: inline-block;
+  background: var(--badge-bg);
+  color: var(--accent);
+  border: 1px solid var(--badge-border);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.entries .hours {
+  color: var(--primary);
+  font-weight: 700;
+  white-space: nowrap;
+  margin-left: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.empty { color: var(--muted-fg); font-size: 0.9rem; text-align: center; padding: 12px 0 4px; }
+
+/* ----------------------------------------------------------
+   7. TOAST ÉRTESÍTÉSEK
+   ---------------------------------------------------------- */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+}
+.toast {
+  padding: 13px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid;
+  animation: slideIn 0.2s ease;
+  background: var(--card);
+}
+.toast svg { flex-shrink: 0; }
+.toast.success { color: var(--toast-success-fg); border-color: var(--border); background: var(--toast-success-bg); }
+.toast.error { color: var(--toast-error-fg); border-color: var(--toast-error-border); background: var(--toast-error-bg); }
+.toast.info { color: var(--toast-info-fg); border-color: var(--toast-info-border); background: var(--toast-info-bg); }
+.toast.hide { animation: fadeOut 0.25s ease forwards; }
+
+@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast, .toast.hide { animation: none; }
+  * { transition: none !important; }
+}
+
+/* ----------------------------------------------------------
+   8. FELUGRÓ ABLAKOK
+   (nullázás megerősítése + visszamenőleges rögzítés)
+   ---------------------------------------------------------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+.overlay.show { display: flex; }
+
+.modal {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 26px;
+  max-width: 380px;
+  width: 100%;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.modal h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+.modal p { margin-bottom: 22px; font-size: 0.92rem; color: var(--muted-fg); }
+.modal .actions { display: flex; gap: 10px; margin-top: 4px; }
+.modal .actions button { flex: 1; }
+.modal label { margin-top: 4px; }
+
+/* ----------------------------------------------------------
+   9. TÉMA KAPCSOLÓ ÉS LEBEGŐ GOMB (FAB)
+   ---------------------------------------------------------- */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 50;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  min-height: 44px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted-fg);
+}
+.theme-toggle:hover { color: var(--fg); background: var(--muted); }
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+/* jobb alsó sarokban lebegő gomb: visszamenőleges rögzítés */
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 60;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+.fab:hover:not(:disabled) { background: var(--accent-hover); }
+
+/* ----------------------------------------------------------
+   10. MOBIL NÉZET (álló telefon)
+   ---------------------------------------------------------- */
+@media (max-width: 480px) {
+  body { padding: 16px 12px calc(96px + env(safe-area-inset-bottom)); }
+  .card { padding: 20px; border-radius: 10px; }
+  h1 { font-size: 1.25rem; }
+  .total-card { padding: 24px 20px; }
+  .total-card .big { font-size: 2.4rem; }
+  .time-input { font-size: 1.4rem; }
+  .theme-toggle { top: 12px; right: 12px; }
+  .topbar { margin-top: 44px; } /* a téma kapcsoló ne lógjon a fejlécre */
+  #login-view { margin-top: 44px; }
+  .fab { right: 16px; }
+}

@@ -1,9 +1,12 @@
 # Munkaóra számláló
 
-Egyszerű webalkalmazás ledolgozott munkaórák rögzítésére. Egyetlen HTML fájlból áll
-(`index.html`), az adatokat Firebase-ben (Firestore) tárolja, a bejelentkezést a
-Firebase Authentication kezeli — így több gépről is használható, és mindenki csak
-a saját munkaóráit látja.
+Egyszerű webalkalmazás ledolgozott munkaórák rögzítésére. Az adatokat Firebase-ben
+(Firestore) tárolja, a bejelentkezést a Firebase Authentication kezeli — így több
+gépről is használható, és mindenki csak a saját munkaóráit látja.
+
+**Fájlszerkezet:** `index.html` (szerkezet), `style.css` (stílusok), `app.js` (logika),
+`manifest.json` + `sw.js` + ikonok (PWA). A fejlesztések története a
+`FEJLESZTESI_NAPLO.md` fájlban követhető.
 
 ## Használat
 

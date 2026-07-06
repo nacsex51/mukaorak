@@ -1,0 +1,84 @@
+# Fejlesztési napló — Munkaóra számláló
+
+Ez a napló nyilvántartja a projekt fejlesztéseit és döntéseit. Későbbi
+módosítás előtt **ezt a fájlt érdemes átnézni**, hogy tudjuk, mi hogyan és
+miért működik. Új munka után mindig egy új bejegyzést adunk hozzá felülre.
+
+## Projekt áttekintés
+
+- **Cél:** ledolgozott munkaórák rögzítése és összesítése, több felhasználóval,
+  több gépről is elérhetően.
+- **Technológia:** statikus weboldal (nincs saját szerver), Firebase Authentication
+  (bejelentkezés) + Firestore (adattárolás). GitHub Pages-en fut, PWA-ként telepíthető.
+- **Fájlszerkezet:**
+  - `index.html` — csak a szerkezet (HTML). Betölti a CSS-t, a JS-t és a Firebase SDK-t.
+  - `style.css` — minden stílus, számozott szekciókban tagolva (lásd a fájl tetején).
+  - `app.js` — minden alkalmazáslogika, számozott szekciókban tagolva (lásd a fájl tetején).
+  - `manifest.json` — PWA metaadatok (név, színek, ikonok).
+  - `sw.js` — service worker (offline gyorsítótárazás).
+  - `icon-192.png`, `icon-512.png` — app ikonok.
+  - `README.md` — beállítási és üzemeltetési útmutató.
+
+## Adatmodell (Firestore)
+
+- Gyűjtemény: `munkaora`, dokumentum azonosító: a felhasználó `uid`-ja.
+- Dokumentum: `{ entries: [ ... ] }`
+- Egy bejegyzés (`entry`) mezői:
+  - `date` — megjelenített dátum, pl. `"2026. 07. 06."`
+  - `sortKey` — rendezéshez, pl. `"2026-07-06"` (nem jelenik meg)
+  - `start`, `end` — időpontok szövegként, pl. `"8:00"`, `"16:30"`
+  - `hours` — a műszak hossza órában (tizedes szám)
+  - `overnight` — `true`, ha a műszak éjfélen átnyúlt
+
+## Fontos működési szabályok
+
+- **Időbevitel:** 24 órás rendszer, elég egy szám (pl. `8`), fél óra `8:30` vagy `8.5`/`8,5`.
+- **Éjfélen átnyúló műszak:** ha a befejezés <= kezdés, az app másnapra érti,
+  és a nappal átfordulást automatikusan hozzászámolja (pl. 8 → 2 = 18 óra).
+  A bejegyzés dátuma ilyenkor a **kezdő nap**.
+- **Biztonság:** a `firebaseConfig` szándékosan publikus (nem titok). A védelmet a
+  Firestore szabályok adják: mindenki csak a saját `uid`-jához tartozó adatot éri el.
+
+---
+
+## Változásnapló (legújabb felül)
+
+### 2026-07-06 — Fájlszétválasztás, visszamenőleges rögzítés, mobiloptimalizálás
+- A korábbi egyetlen `index.html`-t három fájlra bontottuk: `index.html` (szerkezet),
+  `style.css` (stílusok), `app.js` (logika). Mindkét új fájl számozott szekciókra tagolva.
+- **Új funkció:** visszamenőleges rögzítés. Jobb alsó sarokban egy narancssárga lebegő
+  gomb (FAB) nyit egy külön ablakot, ahol dátum + mettől–meddig adható meg. Így korábbi
+  napokra is rögzíthető munkaidő.
+- Az `entry` objektum új `sortKey` mezőt kapott, hogy a lista dátum szerint,
+  csökkenő sorrendben (legújabb felül) jelenjen meg — a visszamenőleges bejegyzések
+  a helyükre kerülnek. A régi, `sortKey` nélküli bejegyzések a lista végén maradnak.
+- **Mobiloptimalizálás:** álló telefonra hangolt elrendezés (`@media max-width: 480px`),
+  `viewport-fit=cover` + safe-area figyelembevétel, kisebb paddingek, a téma kapcsoló és a
+  fejléc nem takarják egymást, a lebegő gomb nem lóg a tartalomra (alsó padding).
+- **Új dokumentum:** ez a fejlesztési napló.
+
+### 2026-07-06 — PWA (telepíthető alkalmazás)
+- `manifest.json`, `sw.js` (service worker) és app ikonok (192/512 px) hozzáadva.
+- Az oldal mostantól „Hozzáadás a kezdőképernyőhöz" opcióval telepíthető, és offline is betölt.
+- GitHub Pages bekapcsolva: az app elérhető a `https://nacsex51.github.io/mukaorak/` címen.
+
+### 2026-07-06 — Regisztrációs fül, beégetett felhasználók eltávolítása
+- Bejelentkező kártyán két fül: Bejelentkezés / Regisztráció (Firebase Auth `createUser`).
+- A kódba írt `felhasznalo1`/`felhasznalo2` és a „helyi mód" teljesen eltávolítva —
+  többé nincs jelszó a forráskódban.
+- README kiegészítve a biztonsági magyarázattal és az API-kulcs korlátozási útmutatóval.
+- Javítás: profilváltáskor (kijelentkezéskor) törlődik az előző felhasználó
+  eredménysora és a beírt időmezők, hogy ne látszódjanak a következő belépőnek.
+
+### 2026-07-06 — Firebase áttérés
+- localStorage helyett Firebase Authentication + Firestore, hogy több gépről is
+  ugyanazok az adatok legyenek elérhetők.
+- A `firebaseConfig` beállítva a `munkaorak-40089` projekthez.
+
+### 2026-07-06 — Kezdeti verzió
+- Egyfájlos webalkalmazás: bejelentkezés, munkaidő-rögzítés mettől–meddig alapon,
+  összesítő, nullázás gomb, appon belüli toast értesítések és megerősítő ablak.
+- AM/PM megszüntetve: 24 órás, egyszerű számbevitel; éjfélen átnyúló műszak
+  automatikus felismerése.
+- Dizájn a ui-ux-pro-max ajánlása alapján: flat design, teal/petrol színvilág,
+  Inter betűtípus. Sötét/világos mód kapcsoló.
