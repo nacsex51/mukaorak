@@ -108,8 +108,12 @@ function toast(message, type) {
 const confirmOverlay = $("modal-overlay");
 let confirmCallback = null;
 
-function askConfirm(message, onConfirm) {
+// opts: { title, confirmLabel } — a cím és a megerősítő gomb felirata állítható
+function askConfirm(message, onConfirm, opts) {
+  opts = opts || {};
+  $("modal-title").textContent = opts.title || "Megerősítés";
   $("modal-text").textContent = message;
+  $("modal-confirm").textContent = opts.confirmLabel || "Igen";
   confirmCallback = onConfirm;
   confirmOverlay.classList.add("show");
 }
@@ -220,18 +224,56 @@ function render() {
 
   sorted.forEach(({ e }) => {
     const li = document.createElement("li");
+
     const info = document.createElement("div");
     const badge = e.overnight ? '<span class="badge">éjfélen át</span>' : "";
     info.innerHTML =
       '<div class="period">' + e.start + " – " + e.end + badge + "</div>" +
       '<div class="meta">' + e.date + "</div>";
+
+    const right = document.createElement("div");
+    right.className = "entry-right";
+
     const hours = document.createElement("div");
     hours.className = "hours";
     hours.textContent = formatHours(e.hours);
+
+    const del = document.createElement("button");
+    del.className = "entry-del";
+    del.setAttribute("aria-label", "Nap törlése");
+    del.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+    // az e objektum referenciáját adjuk át, így a sorrendtől függetlenül a jó bejegyzést töröljük
+    del.addEventListener("click", () => deleteEntry(e));
+
+    right.appendChild(hours);
+    right.appendChild(del);
     li.appendChild(info);
-    li.appendChild(hours);
+    li.appendChild(right);
     list.appendChild(li);
   });
+}
+
+// Egy nap (bejegyzés) törlése megerősítés után.
+function deleteEntry(entryObj) {
+  askConfirm(
+    "Biztosan törlöd ezt a napot? Az órái kikerülnek az összesítésből.",
+    async () => {
+      const idx = entriesCache.indexOf(entryObj);
+      if (idx === -1) return;
+      const backup = entriesCache.slice();
+      entriesCache.splice(idx, 1);
+      try {
+        await saveEntries();
+      } catch (e) {
+        entriesCache = backup;
+        toast("Nem sikerült törölni. Ellenőrizd az internetkapcsolatot!", "error");
+        return;
+      }
+      toast("Nap törölve.", "success");
+      render();
+    },
+    { title: "Nap törlése", confirmLabel: "Törlés" }
+  );
 }
 
 /* ----------------------------------------------------------
@@ -555,7 +597,8 @@ $("reset-btn").addEventListener("click", () => {
       $("result-line").classList.remove("show");
       toast("A számláló nullázva. Kezdheted elölről a számolást.", "success");
       render();
-    }
+    },
+    { title: "Számláló nullázása", confirmLabel: "Nullázás" }
   );
 });
 

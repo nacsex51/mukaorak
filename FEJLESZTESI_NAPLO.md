@@ -43,6 +43,19 @@ miért működik. Új munka után mindig egy új bejegyzést adunk hozzá felül
 
 ## Változásnapló (legújabb felül)
 
+### 2026-07-06 — Nap törlése + visszamenőleges ablak elrendezés-javítás
+- **Új funkció:** a „Rögzített időszakok" listában minden sor mellett egy törlés
+  (kuka) gomb, amivel egy nap törölhető. Törlés előtt megerősítő ablak jelenik meg.
+  A törlés az `e` objektum referenciája alapján történik (`indexOf`), így a
+  megjelenítési sorrendtől függetlenül a helyes bejegyzést törli.
+- A megerősítő ablak (`askConfirm`) újrahasználható lett: `opts.title` és
+  `opts.confirmLabel` paraméterrel a cím és a gomb felirata állítható. A `<h3>`
+  `modal-title` id-t kapott. A nullázás és a törlés is ezt az egy ablakot használja.
+- **Elrendezés-javítás:** a visszamenőleges rögzítés ablakában vízszintes görgetés
+  jelentkezett (a flexbox `min-width: auto` alapértéke miatt az input mezők nem
+  húzódtak össze). Megoldás: `.row > div` és `.row input` most `min-width: 0`,
+  a `.modal` pedig `overflow-x: hidden`. Így az ablak fix, nem kell görgetni.
+
 ### 2026-07-06 — Fájlszétválasztás, visszamenőleges rögzítés, mobiloptimalizálás
 - A korábbi egyetlen `index.html`-t három fájlra bontottuk: `index.html` (szerkezet),
   `style.css` (stílusok), `app.js` (logika). Mindkét új fájl számozott szekciókra tagolva.
