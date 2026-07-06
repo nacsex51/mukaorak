@@ -678,6 +678,11 @@ function showLogin() {
   currentUser = null;
   currentUid = null;
   entriesCache = [];
+  // az előző felhasználó eredménysora és beírt értékei ne maradjanak ott
+  document.getElementById("result-line").classList.remove("show");
+  document.getElementById("result-line").innerHTML = "";
+  document.getElementById("start-time").value = "";
+  document.getElementById("end-time").value = "";
   document.getElementById("app-view").classList.add("hidden");
   document.getElementById("login-view").classList.remove("hidden");
 }
