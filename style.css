@@ -400,17 +400,22 @@ button svg { flex-shrink: 0; }
   background: var(--card);
   border-radius: 12px;
   padding: 26px;
-  max-width: 380px;
-  width: 100%;
-  /* min-width: 0 -> flex-elemként ne feszüljön szélesebbre a képernyőnél
-     (iOS-en a dátummező belső minimális szélessége okozta a kilógást) */
+  /* Explicit, szimmetrikus szélesség: sosem szélesebb a képernyőnél (16px szegély
+     mindkét oldalon), legfeljebb 380px. Így iOS-en sem tudja a rendszer dátummező
+     belső minimális szélessége szétfeszíteni vagy elcsúsztatni az ablakot. */
+  width: min(380px, calc(100vw - 32px));
   min-width: 0;
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
   overflow-x: hidden;
 }
-/* az ablakon belüli mezők soha ne lógjanak túl */
-.modal input { max-width: 100%; }
+/* az ablakon belüli mezők soha ne lógjanak túl a szülő szélességén */
+.modal input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
 .modal h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
 .modal p { margin-bottom: 22px; font-size: 0.92rem; color: var(--muted-fg); }
 .modal .actions { display: flex; gap: 10px; margin-top: 4px; }

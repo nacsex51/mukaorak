@@ -43,6 +43,18 @@ miért működik. Új munka után mindig egy új bejegyzést adunk hozzá felül
 
 ## Változásnapló (legújabb felül)
 
+### 2026-07-06 — Modal szimmetrikus középre igazítás (iOS dátummező)
+- Az előző `min-width: 0` nem volt elég: iOS-en a rendszer dátummező belső minimális
+  szélessége továbbra is szétfeszítette és elcsúsztatta az ablakot (aszimmetrikus
+  margók, a dátummező kilógott). Megoldás: a `.modal` explicit, fix szélességet
+  kapott — `width: min(380px, calc(100vw - 32px))` —, így sosem szélesebb a
+  képernyőnél, és flex-közepesítéssel mindkét oldalon pontosan 16px a szegély.
+- A `.modal input` mostantól `width/max-width/min-width` + `box-sizing: border-box`
+  együttesével biztosan a szülő szélességén belül marad.
+- Ellenőrizve 320 / 390 px szélességen: bal és jobb margó egyaránt 16px (szimmetrikus),
+  nincs vízszintes túllógás.
+- Service worker cache: `v3` (hogy a friss CSS eljusson a klienshez).
+
 ### 2026-07-06 — Modal kilógás (iOS) + betöltési sebesség
 - **Hibajavítás (iOS):** a felugró ablak kilógott a képernyőből, mert flex-elemként
   a `min-width: auto` alapérték miatt az iOS-es dátummező belső minimális szélessége
