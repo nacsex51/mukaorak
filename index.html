@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0D9488">
 <title>Munkaóra számláló</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script>
   // Téma beállítása még a rajzolás előtt, hogy ne villanjon
   (function () {
@@ -803,6 +810,11 @@ registerBtn.addEventListener("click", doRegister);
 document.getElementById("reg-pass2").addEventListener("keydown", (e) => {
   if (e.key === "Enter") doRegister();
 });
+
+// ---------- PWA: service worker regisztrálása ----------
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js");
+}
 
 // ---------- Munkaidő hozzáadása ----------
 const addBtn = document.getElementById("add-btn");
